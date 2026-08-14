@@ -3,7 +3,7 @@ destination = str(input("Desitnation : "))
 country = str(input("Country : "))
 days = int(input("Days : "))
 budget = float(input("Budget : "))
-currecy = str(input("Currency : "))
+currency = str(input("Currency : "))
 travel_month = str(input("Travel month : "))
 
 
@@ -16,19 +16,39 @@ travel_month = str(input("Travel month : "))
 
 
 
-def print_trip_summary(destination, country, days, budget, currecy, travel_month):
-    print("=======================")
-    print("KelanaAI")
-    print("=======================")
-    print(f"Desitination    : {destination}")
-    print(f"Country         : {country}")
-    print(f"Days            : {days} ")
-    print(f"Budget          : {budget}")
-    print(f"Currency        : {currecy}")
-    print(f"Travel Month    : {travel_month}")
-   # print(f"Travel Style   : {travel_style}")
+#def print_trip_summary(destination, country, days, budget, currecy, travel_month):
+#  print("=======================")
+#  print("KelanaAI")
+#  print("=======================")
+#  print(f"Desitination    : {destination}")
+#  print(f"Country         : {country}")
+#  print(f"Days            : {days} ")
+#  print(f"Budget          : {budget}")
+#  print(f"Currency        : {currecy}")
+#  print(f"Travel Month    : {travel_month}")
+#  print(f"Travel Style   : {travel_style}")
 
-print_trip_summary(destination, country, days, budget, currecy, travel_month)
-#if total_estimated_cost > budget:
- #   print("⚠ Budget exceeded.")
+from services.trip_services import (
+    calculate_daily_budget,
+    get_trip_category, 
+    get_travel_season, 
+    recommended_places)
 
+daily_budget = calculate_daily_budget(budget, days)
+category = get_trip_category(budget)
+season = get_travel_season(travel_month)
+
+print()
+print("KelanaAI")
+print("==============================")
+print(f"Desitination    : {destination}")
+print(f"Days            : {days} ")
+print(f"Budget          : {budget} {currency}/Day")
+print(f"Travel Month    : {travel_month}")
+print(f"Season          : {season}")
+
+print()
+print("Recommended Places")
+for place in recommended_places:
+    print(f"- {place}")
+    
