@@ -25,3 +25,10 @@ def get_travel_season(travel_month):
         return "Holiday Season"
     else:
         return "Regular Season"
+
+def get_recommended_transport(travel_style):
+    if travel_style.strip().lower() == "family":
+        return "Train"
+    else:
+        return "No recommendation available"
+    
