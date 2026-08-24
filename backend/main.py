@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from models.trip import Trip
 from database import SessionLocal, init_db
 from services.trip_services import calculate_daily_budget, get_trip_category, get_recommended_transport, get_travel_season, recommended_places
+from services.bedrock_service import generate_trip_recommendation
 
 app = FastAPI()
 
@@ -30,6 +31,7 @@ def create_trip(request: TripRequest):
         budget       = request.budget,
         category     = category,
         daily_budget = daily_budget,
+        ai_recommendation = ai_recommendation,
     )
 
     # save to PostgreSQL
@@ -83,5 +85,44 @@ def update_trip(trip_id: int, request: TripUpdate):
         db.rollback()
         raise
     
+    finally:
+        db.close()
+
+@app.post("/api/v1/trips/{trip_id}/generate")
+def generate_ai_recommendation(trip_id: int):
+
+    db = SessionLocal()
+
+    try:
+        trip = db.query(Trip).filter(Trip.id == trip_id).first()
+
+        if trip is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Trip with id {trip_id} not found"
+            )
+
+        ai_recommendation = generate_trip_recommendation(
+            trip.destination,
+            trip.days,
+            trip.budget,
+            "Family"
+        )
+
+        trip.ai_recommendation = ai_recommendation
+
+        db.commit()
+        db.refresh(trip)
+
+        return {
+            "trip_id": trip.id,
+            "destination": trip.destination,
+            "recommendation": trip.ai_recommendation
+        }
+
+    except Exception:
+        db.rollback()
+        raise
+
     finally:
         db.close()
