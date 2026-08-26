@@ -4,8 +4,17 @@ from models.trip import Trip
 from database import SessionLocal, init_db
 from services.trip_services import calculate_daily_budget, get_trip_category, get_recommended_transport, get_travel_season, recommended_places
 from services.bedrock_service import generate_trip_recommendation
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 init_db()
 
@@ -31,7 +40,6 @@ def create_trip(request: TripRequest):
         budget       = request.budget,
         category     = category,
         daily_budget = daily_budget,
-        ai_recommendation = ai_recommendation,
     )
 
     # save to PostgreSQL
@@ -54,6 +62,10 @@ def get_trip(trip_id: int):
     db = SessionLocal()
     trip = db.query(Trip).filter(Trip.id == trip_id).first()
     db.close()
+    # handling not found
+    if trip is None:
+        raise HTTPException(status_code=404, detail=f"Trip with id {trip_id} not found")
+    return trip
 
 @app.put("/api/v1/trips/{trip_id}")
 def update_trip(trip_id: int, request: TripUpdate):
