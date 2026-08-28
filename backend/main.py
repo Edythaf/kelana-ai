@@ -38,8 +38,10 @@ def create_trip(request: TripRequest):
         destination  = request.destination,
         days         = request.days,
         budget       = request.budget,
+        travel_style=request.travel_style,
         category     = category,
         daily_budget = daily_budget,
+        
     )
 
     # save to PostgreSQL
@@ -118,7 +120,7 @@ def generate_ai_recommendation(trip_id: int):
             trip.destination,
             trip.days,
             trip.budget,
-            "Family"
+            trip.travel_style or "Family"
         )
 
         trip.ai_recommendation = ai_recommendation
