@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const router = useRouter();
   const [aiRecommendation, setAiRecommendation] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -59,6 +61,7 @@ export default function Home() {
       const recommendation = await aiResponse.json();
 
       setAiRecommendation(recommendation.recommendation);
+      router.push("/trips");
     } catch {
       setError("Unable to generate itinerary. Please try again.");
     } finally {
