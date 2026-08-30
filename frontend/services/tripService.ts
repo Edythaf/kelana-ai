@@ -1,7 +1,14 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 
-export async function getTrips() {
-  const res = await fetch(`${API_URL}/trips`)
+export async function getTrips(token?: string) {
+  const res = await fetch(`${API_URL}/trips`, {
+    headers: token
+      ? {
+          Authorization: `Bearer ${token}`,
+        }
+      : {},
+  })
+
   return res.json()
 }
 

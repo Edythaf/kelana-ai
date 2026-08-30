@@ -1,6 +1,8 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from models.trip import Trip
+from models.user import User
+from services.auth_service import (hash_password, verify_password, create_access_token, get_current_user,)
 from database import SessionLocal, init_db
 from services.trip_services import calculate_daily_budget, get_trip_category, get_recommended_transport, get_travel_season, recommended_places
 from services.bedrock_service import generate_trip_recommendation
@@ -27,8 +29,93 @@ class TripRequest(BaseModel):
 class TripUpdate(BaseModel):
     budget: float
 
+class RegisterRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+@app.post("/api/v1/auth/register")
+def register_user(request: RegisterRequest):
+    db = SessionLocal()
+
+    try:
+        user = User(
+            name=request.name,
+            email=request.email,
+            password_hash=hash_password(request.password)
+        )
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        return {
+            "id" : user.id,
+            "name" : user.name,
+            "email" : user.email
+        }
+    finally: 
+        db.close()
+
+@app.post("/api/v1/auth/login")
+def login_user(request: LoginRequest):
+    db = SessionLocal()
+
+    try:
+        user = db.query(User).filter(
+            User.email == request.email
+        ).first()
+
+        if user is None:
+            raise HTTPException(
+                status_code+401,
+                detail="Invalid email or password"
+            )
+
+        if not verify_password(
+            request.password, 
+            user.password_hash
+        ):
+            raise HTTPException(
+                status_code = 401,
+                detail = "Invalid email or password"
+            )
+        token = create_access_token(user.id)
+
+        return {
+            "access_token" : token, 
+            "token_type": "Bearer"
+        }
+    finally:
+        db.close() 
+
+@app.get("/api/v1/auth/me")
+def get_me(
+    user: User = Depends(get_current_user)
+):
+    db = SessionLocal()
+
+    try:
+        total_trips = db.query(Trip).filter(
+            Trip.user_id == user.id
+        ).count()
+
+        return {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "total_trips": total_trips
+        }
+
+    finally:
+        db.close()
+
 @app.post("/api/v1/trips")
-def create_trip(request: TripRequest):
+def create_trip(request: TripRequest,  user: User = Depends(get_current_user)):
     # reuse Session 2 business logic
     daily_budget = calculate_daily_budget(request.budget, request.days)
     category     = get_trip_category(request.budget)
@@ -41,7 +128,7 @@ def create_trip(request: TripRequest):
         travel_style=request.travel_style,
         category     = category,
         daily_budget = daily_budget,
-        
+        user_id=user.id, 
     )
 
     # save to PostgreSQL
@@ -53,9 +140,15 @@ def create_trip(request: TripRequest):
     return trip
 
 @app.get("/api/v1/trips")
-def list_trips():
+def list_trips(
+    user: User = Depends(get_current_user)
+):
     db = SessionLocal()
-    trips = db.query(Trip).all()
+
+    trips = db.query(Trip).filter(
+        Trip.user_id == user.id
+    ).all()
+
     db.close()
     return trips
 
