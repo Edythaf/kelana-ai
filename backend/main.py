@@ -72,7 +72,7 @@ def login_user(request: LoginRequest):
 
         if user is None:
             raise HTTPException(
-                status_code+401,
+                status_code=401,
                 detail="Invalid email or password"
             )
 
@@ -153,17 +153,38 @@ def list_trips(
     return trips
 
 @app.get("/api/v1/trips/{trip_id}")
-def get_trip(trip_id: int):
+def get_trip(
+    trip_id: int,
+    user: User = Depends(get_current_user)
+):
     db = SessionLocal()
-    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+
+    trip = db.query(Trip).filter(
+        Trip.id == trip_id
+    ).first()
+
     db.close()
-    # handling not found
+
     if trip is None:
-        raise HTTPException(status_code=404, detail=f"Trip with id {trip_id} not found")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Trip with id {trip_id} not found"
+        )
+
+    if trip.user_id != user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You are not allowed to view this trip"
+        )
+
     return trip
 
 @app.put("/api/v1/trips/{trip_id}")
-def update_trip(trip_id: int, request: TripUpdate):
+def update_trip(
+    trip_id: int,
+    request: TripUpdate,
+    user: User = Depends(get_current_user)
+):
     db = SessionLocal()
     try: 
         trip = db.query(Trip).filter(
@@ -175,6 +196,11 @@ def update_trip(trip_id: int, request: TripUpdate):
                 status_code = 404, 
                 detail=f"Trip with id {trip_id} not found",
             )
+        if trip.user_id != user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="You are not allowed to update this trip"
+    )
         trip.budget = request.budget
 
         trip.category = get_trip_category(request.budget)
@@ -230,6 +256,40 @@ def generate_ai_recommendation(trip_id: int):
     except Exception:
         db.rollback()
         raise
+
+    finally:
+        db.close()
+
+@app.delete("/api/v1/trips/{trip_id}")
+def delete_trip(
+    trip_id: int,
+    user: User = Depends(get_current_user)
+):
+    db = SessionLocal()
+
+    try:
+        trip = db.query(Trip).filter(
+            Trip.id == trip_id
+        ).first()
+
+        if trip is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Trip with id {trip_id} not found"
+            )
+
+        if trip.user_id != user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="You are not allowed to delete this trip"
+            )
+
+        db.delete(trip)
+        db.commit()
+
+        return {
+            "message": "Trip deleted successfully"
+        }
 
     finally:
         db.close()
