@@ -7,7 +7,7 @@ from database import SessionLocal, init_db
 from services.trip_services import calculate_daily_budget, get_trip_category, get_recommended_transport, get_travel_season, recommended_places
 from services.bedrock_service import generate_trip_recommendation
 from fastapi.middleware.cors import CORSMiddleware
-from services.kb_service import ask_knowledge_base
+from services.kb_service import ask_knowledge_base, ask_base_model
 
 app = FastAPI()
 
@@ -306,4 +306,16 @@ def ask_assistant(request: QuestionRequest):
         "question": request.question,
         "answer": result["answer"],
         "sources": result["sources"]
+    }
+
+@app.post("/api/v1/assistant/compare")
+def compare_assistant(request: QuestionRequest):
+    base_answer = ask_base_model(request.question)
+    rag_result = ask_knowledge_base(request.question)
+
+    return {
+        "question": request.question,
+        "base_model_answer": base_answer,
+        "rag_answer": rag_result["answer"],
+        "sources": rag_result["sources"]
     }

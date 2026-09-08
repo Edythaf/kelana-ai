@@ -68,7 +68,7 @@ If the knowledge does not contain enough information,
 say that the information is not available in the knowledge base.
 """
 
-    # 4. Ask Amazon Nova Lite to generate the answer
+    # 4. Ask Amazon Nova Lite to generate the RAG answer
     response = bedrock_client.converse(
         modelId=MODEL_ID,
         messages=[
@@ -83,8 +83,26 @@ say that the information is not available in the knowledge base.
         ]
     )
 
-    # 5. Return generated answer and sources
+    # 5. Return RAG answer and sources
     return {
         "answer": response["output"]["message"]["content"][0]["text"],
         "sources": sources
     }
+
+
+def ask_base_model(question: str):
+    response = bedrock_client.converse(
+        modelId=MODEL_ID,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "text": question
+                    }
+                ]
+            }
+        ]
+    )
+
+    return response["output"]["message"]["content"][0]["text"]
