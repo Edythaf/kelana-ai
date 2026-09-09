@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Conversation = {
   id: number;
@@ -25,9 +25,17 @@ export default function ChatPage() {
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
 
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     loadConversations();
   }, []);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
+  }, [messages, sending]);
 
   async function loadConversations() {
     const token = localStorage.getItem("token");
@@ -116,7 +124,6 @@ export default function ChatPage() {
 
       if (response.ok) {
         setNewMessage("");
-
         await loadMessages(selectedConversationId);
       } else {
         const data = await response.json();
@@ -130,82 +137,134 @@ export default function ChatPage() {
   }
 
   return (
-    <main style={{ padding: "30px" }}>
+    <main
+      style={{
+        padding: "30px",
+        maxWidth: "1000px",
+        margin: "0 auto",
+      }}
+    >
       <h1>KelanaAI Chat</h1>
 
-      <h2>Conversations</h2>
+      <section style={{ marginBottom: "30px" }}>
+        <h2>Conversations</h2>
 
-      {loading && <p>Loading...</p>}
+        {loading && <p>Loading...</p>}
 
-      {!loading && conversations.length === 0 && (
-        <p>No conversations found.</p>
-      )}
+        {!loading && conversations.length === 0 && (
+          <p>No conversations found.</p>
+        )}
 
-      {conversations.map((conversation) => (
-        <div
-          key={conversation.id}
-          onClick={() => loadMessages(conversation.id)}
-          style={{
-            border: "1px solid #ddd",
-            padding: "12px",
-            marginBottom: "8px",
-            borderRadius: "8px",
-            cursor: "pointer",
-          }}
-        >
-          {conversation.title}
-        </div>
-      ))}
+        {conversations.map((conversation) => (
+          <div
+            key={conversation.id}
+            onClick={() => loadMessages(conversation.id)}
+            style={{
+              border: "1px solid #ddd",
+              padding: "12px",
+              marginBottom: "8px",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontWeight:
+                selectedConversationId === conversation.id
+                  ? "bold"
+                  : "normal",
+            }}
+          >
+            {conversation.title}
+          </div>
+        ))}
+      </section>
 
       {selectedConversationId && (
-        <div style={{ marginTop: "30px" }}>
+        <section>
           <h2>Messages</h2>
 
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              style={{
-                border: "1px solid #ddd",
-                padding: "12px",
-                marginBottom: "10px",
-                borderRadius: "8px",
-              }}
-            >
-              <strong>
-                {message.role === "user" ? "You" : "KelanaAI"}
-              </strong>
+          <div style={{ marginBottom: "20px" }}>
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                style={{
+                  border: "1px solid #ddd",
+                  padding: "12px",
+                  marginBottom: "10px",
+                  borderRadius: "8px",
+                }}
+              >
+                <strong>
+                  {message.role === "user" ? "You" : "KelanaAI"}
+                </strong>
 
-              <p style={{ whiteSpace: "pre-wrap" }}>
-                {message.content}
+                <p
+                  style={{
+                    fontSize: "12px",
+                    color: "#666",
+                    marginTop: "4px",
+                    marginBottom: "8px",
+                  }}
+                >
+                  {new Date(message.created_at).toLocaleString()}
+                </p>
+
+                <p
+                  style={{
+                    whiteSpace: "pre-wrap",
+                    margin: 0,
+                  }}
+                >
+                  {message.content}
+                </p>
+              </div>
+            ))}
+
+            {sending && (
+              <p
+                style={{
+                  fontStyle: "italic",
+                  color: "#666",
+                  marginTop: "10px",
+                }}
+              >
+                KelanaAI is typing...
               </p>
-            </div>
-          ))}
+            )}
 
-          <div style={{ marginTop: "20px" }}>
+            <div ref={messagesEndRef} />
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+            }}
+          >
             <input
               type="text"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="Type your message..."
+              disabled={sending}
               style={{
-                width: "80%",
+                flex: 1,
                 padding: "12px",
-                marginRight: "10px",
+                border: "1px solid #ccc",
+                borderRadius: "8px",
               }}
             />
 
             <button
               onClick={sendMessage}
-              disabled={sending}
+              disabled={sending || !newMessage.trim()}
               style={{
                 padding: "12px 20px",
-                cursor: "pointer",
+                cursor: sending ? "not-allowed" : "pointer",
+                borderRadius: "8px",
               }}
             >
               {sending ? "Sending..." : "Send"}
             </button>
           </div>
-        </div>
+        </section>
       )}
     </main>
   );

@@ -45,7 +45,7 @@ class QuestionRequest(BaseModel):
     question: str
 
 class ConversationRequest(BaseModel):
-    title: str
+    title: str = "New Conversation"
 
 class MessageRequest(BaseModel):
     content: str
@@ -378,7 +378,6 @@ def list_conversations(
 
     finally:
         db.close()
-
 @app.post("/api/v1/conversations/{conversation_id}/messages")
 def send_message(
     conversation_id: int,
@@ -402,6 +401,17 @@ def send_message(
                 status_code=404,
                 detail="Conversation not found"
             )
+
+        # Check whether this is the first message
+        existing_message = (
+            db.query(Message)
+            .filter(Message.conversation_id == conversation_id)
+            .first()
+        )
+
+        # Automatically create title from first user message
+        if existing_message is None:
+            conversation.title = request.content.strip()[:60]
 
         user_message = Message(
             conversation_id=conversation_id,
@@ -435,48 +445,6 @@ def send_message(
             "user_message": request.content,
             "assistant_reply": ai_reply
         }
-
-    finally:
-        db.close()
-@app.get("/api/v1/conversations/{conversation_id}/messages")
-def get_messages(
-    conversation_id: int,
-    user: User = Depends(get_current_user)
-):
-    db = SessionLocal()
-
-    try:
-        conversation = (
-            db.query(Conversation)
-            .filter(
-                Conversation.id == conversation_id,
-                Conversation.user_id == user.id
-            )
-            .first()
-        )
-
-        if not conversation:
-            raise HTTPException(
-                status_code=404,
-                detail="Conversation not found"
-            )
-
-        messages = (
-            db.query(Message)
-            .filter(Message.conversation_id == conversation_id)
-            .order_by(Message.id.asc())
-            .all()
-        )
-
-        return [
-            {
-                "id": message.id,
-                "role": message.role,
-                "content": message.content,
-                "created_at": message.created_at
-            }
-            for message in messages
-        ]
 
     finally:
         db.close()
