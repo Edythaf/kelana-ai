@@ -12,8 +12,19 @@ export async function getTrips(token?: string) {
   return res.json()
 }
 
-export async function getTrip(id: number) {
-  const res = await fetch(`${API_URL}/trips/${id}`)
+export async function getTrip(id: number, token?: string) {
+  const res = await fetch(`${API_URL}/trips/${id}`, {
+    headers: token
+      ? {
+          Authorization: `Bearer ${token}`,
+        }
+      : {},
+  })
+
+  if (!res.ok) {
+    throw new Error("Failed to load trip")
+  }
+
   return res.json()
 }
 

@@ -4,15 +4,19 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter();
 
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
+  async function handleRegister(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
 
     setLoading(true);
@@ -22,17 +26,20 @@ export default function LoginPage() {
       const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
       if (!API_URL) {
-        throw new Error("NEXT_PUBLIC_API_URL is not configured");
+        throw new Error(
+          "NEXT_PUBLIC_API_URL is not configured"
+        );
       }
 
       const response = await fetch(
-        `${API_URL}/auth/login`,
+        `${API_URL}/auth/register`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
+            name,
             email,
             password,
           }),
@@ -43,23 +50,22 @@ export default function LoginPage() {
 
       if (!response.ok) {
         throw new Error(
-          data.detail || "Invalid email or password"
+          data.detail ||
+            "Unable to create account"
         );
       }
 
-      localStorage.setItem(
-        "token",
-        data.access_token
-      );
-
-      router.push("/trips");
+      router.push("/login");
     } catch (error) {
-      console.error("Login failed:", error);
+      console.error(
+        "Registration failed:",
+        error
+      );
 
       setError(
         error instanceof Error
           ? error.message
-          : "Unable to login. Please try again."
+          : "Unable to create your account. Please try again."
       );
     } finally {
       setLoading(false);
@@ -96,21 +102,22 @@ export default function LoginPage() {
             </div>
 
             <h1 className="text-5xl font-bold leading-tight">
-              Plan smarter.
+              Start exploring.
               <span className="block text-blue-200">
-                Travel better.
+                Plan with AI.
               </span>
             </h1>
 
             <p className="mt-6 max-w-md text-lg leading-8 text-blue-100">
-              Access your saved trips, continue AI conversations,
-              and create personalized itineraries with KelanaAI.
+              Create your KelanaAI account and start
+              building personalized travel plans powered
+              by AI.
             </p>
 
             <div className="mt-10 space-y-4 text-sm text-blue-100">
-              <p>✓ AI-powered itineraries</p>
+              <p>✓ Personalized AI itineraries</p>
               <p>✓ Saved trip history</p>
-              <p>✓ Conversation memory</p>
+              <p>✓ Multi-turn AI conversations</p>
             </div>
           </div>
 
@@ -119,7 +126,7 @@ export default function LoginPage() {
           </p>
         </section>
 
-        {/* LOGIN FORM */}
+        {/* REGISTER FORM */}
         <section className="flex items-center justify-center px-6 py-12 sm:px-10">
           <div className="w-full max-w-md">
             {/* MOBILE BRAND */}
@@ -143,21 +150,40 @@ export default function LoginPage() {
             </Link>
 
             <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">
-              Welcome back
+              Get started
             </p>
 
             <h2 className="mt-2 text-4xl font-bold tracking-tight">
-              Sign in to KelanaAI
+              Create your account
             </h2>
 
             <p className="mt-3 text-slate-500">
-              Continue planning your next adventure.
+              Join KelanaAI and start planning your
+              next adventure.
             </p>
 
             <form
-              onSubmit={handleLogin}
+              onSubmit={handleRegister}
               className="mt-8 space-y-5"
             >
+              <div>
+                <label className="mb-2 block text-sm font-semibold">
+                  Name
+                </label>
+
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) =>
+                    setName(e.target.value)
+                  }
+                  placeholder="Your name"
+                  required
+                  autoComplete="name"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                />
+              </div>
+
               <div>
                 <label className="mb-2 block text-sm font-semibold">
                   Email
@@ -187,11 +213,16 @@ export default function LoginPage() {
                   onChange={(e) =>
                     setPassword(e.target.value)
                   }
-                  placeholder="Enter your password"
+                  placeholder="Create a password"
                   required
-                  autoComplete="current-password"
+                  autoComplete="new-password"
+                  minLength={6}
                   className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                 />
+
+                <p className="mt-2 text-xs text-slate-400">
+                  Use at least 6 characters.
+                </p>
               </div>
 
               {error && (
@@ -206,25 +237,25 @@ export default function LoginPage() {
                 className="flex w-full items-center justify-center rounded-xl bg-blue-600 px-5 py-3.5 font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading
-                  ? "Signing in..."
-                  : "Sign In"}
+                  ? "Creating account..."
+                  : "Create Account"}
               </button>
             </form>
 
             <div className="mt-8 border-t border-slate-200 pt-6 text-center text-sm text-slate-500">
-              New to KelanaAI?{" "}
+              Already have an account?{" "}
               <Link
-                href="/register"
+                href="/login"
                 className="font-semibold text-blue-600 hover:text-blue-700"
               >
-                Create an account
+                Sign in
               </Link>
             </div>
 
             <div className="mt-8 flex items-center justify-center gap-3 text-xs text-slate-400">
-              <span>Secure JWT Authentication</span>
+              <span>Secure Authentication</span>
               <span>•</span>
-              <span>HTTPS</span>
+              <span>Protected Passwords</span>
             </div>
           </div>
         </section>
