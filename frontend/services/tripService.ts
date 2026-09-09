@@ -17,10 +17,18 @@ export async function getTrip(id: number) {
   return res.json()
 }
 
-export async function generateTrip(data: any) {
+export async function generateTrip(data: any, token?: string) {
   const res = await fetch(`${API_URL}/trips`, {
     method: "POST",
-    body: JSON.stringify(data)
+    headers: {
+      "Content-Type": "application/json",
+      ...(token
+        ? {
+            Authorization: `Bearer ${token}`,
+          }
+        : {}),
+    },
+    body: JSON.stringify(data),
   })
 
   return res.json()
