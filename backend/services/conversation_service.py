@@ -14,17 +14,45 @@ bedrock_client = boto3.client(
 
 
 def generate_chat_response(messages):
-    bedrock_messages = [
+    """
+    Generate an AI response using the complete conversation history.
+    """
+
+    bedrock_messages = []
+
+    for message in messages:
+        if message.role not in ("user", "assistant"):
+            continue
+
+        bedrock_messages.append(
+            {
+                "role": message.role,
+                "content": [
+                    {
+                        "text": message.content
+                    }
+                ]
+            }
+        )
+
+    system_prompt = [
         {
-            "role": message.role,
-            "content": [{"text": message.content}]
+            "text": (
+                "You are KelanaAI, a helpful AI travel assistant. "
+                "The messages provided to you contain the conversation history "
+                "between you and the user. Use the previous messages when answering "
+                "the user's latest question. Maintain context across the conversation. "
+                "If the user asks what they previously said or asked, answer using "
+                "the conversation history that is provided to you. "
+                "Do not claim that you cannot access previous messages when those "
+                "messages are present in the conversation history."
+            )
         }
-        for message in messages
-        if message.role in ("user", "assistant")
     ]
 
     response = bedrock_client.converse(
         modelId=MODEL_ID,
+        system=system_prompt,
         messages=bedrock_messages
     )
 
