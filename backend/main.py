@@ -2,12 +2,14 @@ from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from models.trip import Trip
 from models.user import User
+from models.conversation import Conversation, Message
 from services.auth_service import (hash_password, verify_password, create_access_token, get_current_user,)
 from database import SessionLocal, init_db
 from services.trip_services import calculate_daily_budget, get_trip_category, get_recommended_transport, get_travel_season, recommended_places
 from services.bedrock_service import generate_trip_recommendation
 from fastapi.middleware.cors import CORSMiddleware
 from services.kb_service import ask_knowledge_base, ask_base_model
+from services.conversation_service import generate_chat_response
 
 app = FastAPI()
 
@@ -41,6 +43,12 @@ class LoginRequest(BaseModel):
 
 class QuestionRequest(BaseModel):
     question: str
+
+class ConversationRequest(BaseModel):
+    title: str
+
+class MessageRequest(BaseModel):
+    content: str
 
 @app.post("/api/v1/auth/register")
 def register_user(request: RegisterRequest):
@@ -319,3 +327,156 @@ def compare_assistant(request: QuestionRequest):
         "rag_answer": rag_result["answer"],
         "sources": rag_result["sources"]
     }
+
+@app.post("/api/v1/conversations")
+def create_conversation(
+    request: ConversationRequest,
+    user: User = Depends(get_current_user)
+):
+    db = SessionLocal()
+
+    try:
+        conversation = Conversation(
+            user_id=user.id,
+            title=request.title
+        )
+
+        db.add(conversation)
+        db.commit()
+        db.refresh(conversation)
+
+        return {
+            "conversation_id": conversation.id,
+            "title": conversation.title
+        }
+
+    finally:
+        db.close()
+
+@app.get("/api/v1/conversations")
+def list_conversations(
+    user: User = Depends(get_current_user)
+):
+    db = SessionLocal()
+
+    try:
+        conversations = (
+            db.query(Conversation)
+            .filter(Conversation.user_id == user.id)
+            .order_by(Conversation.created_at.desc())
+            .all()
+        )
+
+        return [
+            {
+                "id": conversation.id,
+                "title": conversation.title,
+                "created_at": conversation.created_at
+            }
+            for conversation in conversations
+        ]
+
+    finally:
+        db.close()
+
+@app.post("/api/v1/conversations/{conversation_id}/messages")
+def send_message(
+    conversation_id: int,
+    request: MessageRequest,
+    user: User = Depends(get_current_user)
+):
+    db = SessionLocal()
+
+    try:
+        conversation = (
+            db.query(Conversation)
+            .filter(
+                Conversation.id == conversation_id,
+                Conversation.user_id == user.id
+            )
+            .first()
+        )
+
+        if not conversation:
+            raise HTTPException(
+                status_code=404,
+                detail="Conversation not found"
+            )
+
+        user_message = Message(
+            conversation_id=conversation_id,
+            role="user",
+            content=request.content
+        )
+
+        db.add(user_message)
+        db.commit()
+
+        messages = (
+            db.query(Message)
+            .filter(Message.conversation_id == conversation_id)
+            .order_by(Message.id.asc())
+            .all()
+        )
+
+        ai_reply = generate_chat_response(messages)
+
+        assistant_message = Message(
+            conversation_id=conversation_id,
+            role="assistant",
+            content=ai_reply
+        )
+
+        db.add(assistant_message)
+        db.commit()
+
+        return {
+            "conversation_id": conversation_id,
+            "user_message": request.content,
+            "assistant_reply": ai_reply
+        }
+
+    finally:
+        db.close()
+@app.get("/api/v1/conversations/{conversation_id}/messages")
+def get_messages(
+    conversation_id: int,
+    user: User = Depends(get_current_user)
+):
+    db = SessionLocal()
+
+    try:
+        conversation = (
+            db.query(Conversation)
+            .filter(
+                Conversation.id == conversation_id,
+                Conversation.user_id == user.id
+            )
+            .first()
+        )
+
+        if not conversation:
+            raise HTTPException(
+                status_code=404,
+                detail="Conversation not found"
+            )
+
+        messages = (
+            db.query(Message)
+            .filter(Message.conversation_id == conversation_id)
+            .order_by(Message.id.asc())
+            .all()
+        )
+
+        return [
+            {
+                "id": message.id,
+                "role": message.role,
+                "content": message.content,
+                "created_at": message.created_at
+            }
+            for message in messages
+        ]
+
+    finally:
+        db.close()
