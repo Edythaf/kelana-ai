@@ -15,10 +15,11 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "https://kelana-9t2lpapbu-ditalone.vercel.app",
-    ],
+allow_origins=[
+    "http://localhost:3000",
+    "https://kelana-9t2lpapbu-ditalone.vercel.app",
+    "https://loquacious-druid-894bd6.netlify.app",
+],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
